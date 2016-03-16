@@ -1,0 +1,106 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>Progress Bar Demo</title>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.5.0/angular.js"></script>
+</head>
+<body>
+
+    <script>
+
+        angular.module('progressDemo', []);
+
+        angular.module('progressDemo').controller('progressCtrl', function ($scope, $http, $q, $timeout) {
+
+            $scope.batches = [];
+
+            var howLongBetweenPolls = function (batchModel) {
+                var milliseconds = batchModel.NumberOfThingsToDo / 500;
+
+                if (milliseconds < 250)
+                    milliseconds = 250;
+                if (milliseconds > 3000)
+                    milliseconds = 3000;
+
+                return milliseconds;
+            };
+
+            var startBigStuff = function () {
+                var deferred = $q.defer();
+                $http.post('/Home/StartBigStuff?howMuchStuff=' + $scope.numberOfThingsToDo)
+                    .then(function (batchModel) {
+                        deferred.resolve(batchModel);
+                    });
+                return deferred.promise;
+            };
+
+            var getStatus = function (batchId) {
+                var deferred = $q.defer();
+                $http.get('/Home/Status?id=' + batchId)
+                    .then(function (batchStatus) {
+                        deferred.resolve(batchStatus);
+                    });
+                return deferred.promise;
+            };
+
+            var setProgress = function (batchModel, batchStatus) {
+                batchModel.progress = batchStatus.ItemsCompletedCount / batchModel.NumberOfThingsToDo;
+                batchModel.percentComplete = (batchModel.progress * 100).toFixed(2);
+                batchModel.percentCompleteText = batchModel.percentComplete.toString() + '%';
+                batchModel.complete = batchModel.percentComplete >= 100;
+            };
+
+            var pollForStatus = function (batchModel) {
+                var timeBetweenPolls = howLongBetweenPolls(batchModel);
+
+                $timeout(function () {
+                    getStatus(batchModel.BatchId).then(
+                        function (response) {
+                            var batchStatus = response.data;
+                            setProgress(batchModel, batchStatus);
+
+                            if (batchModel.complete)
+                                return;
+
+                            pollForStatus(batchModel);
+                        });
+                }, timeBetweenPolls);
+            };
+
+            $scope.submit = function () {
+                startBigStuff().then(function (response) {
+                    var batchModel = response.data;
+                    $scope.batches.push(batchModel);
+                    pollForStatus(batchModel);
+                });
+            };
+        });
+
+    </script>
+
+    <div ng-app="progressDemo" ng-controller="progressCtrl">
+
+        <div>
+            <label>Number of things to do: </label>
+            <input type="number" ng-model="numberOfThingsToDo" /> &nbsp;
+            <button ng-click="submit()">Start Doing Things</button>
+        </div>
+
+        <div ng-repeat="batch in batches">
+
+            <h4>BatchId: {{batch.BatchId}} - Things to do: {{batch.NumberOfThingsToDo}}</h4>
+
+            <div style="border: thin black solid; width: 800px;">
+                <div ng-style="{ 'width': batch.percentCompleteText || '0%' }" style="background-color: green; text-align: center;">
+                    {{ batch.percentCompleteText || '0%' }}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
