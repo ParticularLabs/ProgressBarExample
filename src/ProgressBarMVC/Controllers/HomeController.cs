@@ -5,12 +5,6 @@ using ProgressBarMVC.Models;
 
 public class HomeController : Controller
 {
-    public HomeController(IBus bus, IStatusStoreClient statusStoreClient)
-    {
-        _bus = bus;
-        _statusStoreClient = statusStoreClient;
-    }
-
     /// <summary>
     /// Start a large task
     /// </summary>
@@ -58,6 +52,12 @@ public class HomeController : Controller
     public ActionResult Index()
     {
         return View();
+    }
+
+    public HomeController(IBus bus, IStatusStoreClient statusStoreClient)
+    {
+        _bus = bus;
+        _statusStoreClient = statusStoreClient;
     }
 
     private readonly IBus _bus;
