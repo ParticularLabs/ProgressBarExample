@@ -5,9 +5,6 @@ using ProgressBarMVC.Models;
 
 public class HomeController : Controller
 {
-    private readonly IBus _bus;
-    private readonly IStatusStoreClient _statusStoreClient;
-
     public HomeController(IBus bus, IStatusStoreClient statusStoreClient)
     {
         _bus = bus;
@@ -62,4 +59,7 @@ public class HomeController : Controller
     {
         return View();
     }
+
+    private readonly IBus _bus;
+    private readonly IStatusStoreClient _statusStoreClient;
 }

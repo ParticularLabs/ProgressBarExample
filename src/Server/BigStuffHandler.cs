@@ -4,9 +4,6 @@ using NServiceBus;
 
 public class BigStuffHandler : IHandleMessages<TriggerBigStuff>
 {
-    IBus _bus;
-    readonly IStatusStoreClient _statusStoreClient;
-
     public BigStuffHandler(IBus bus, IStatusStoreClient statusStoreClient)
     {
         _bus = bus;
@@ -18,8 +15,8 @@ public class BigStuffHandler : IHandleMessages<TriggerBigStuff>
         Console.WriteLine("Handling some big stuff.");
         for (var index = 0; index <= message.HowMuchStuff; index++)
         {
-            var messageId = DoSomeWorkForABatch(message, index);
-            _statusStoreClient.AddCompletedCommandToBatch(batchId: message.Id, messageId: messageId);
+            var workItemId = DoSomeWorkForABatch(message, index);
+            _statusStoreClient.AddCompletedCommandToBatch(batchId: message.Id, messageId: workItemId);
         }
     }
 
@@ -30,4 +27,7 @@ public class BigStuffHandler : IHandleMessages<TriggerBigStuff>
         //Just pretend we did some stuff and sent a message
         return Guid.NewGuid();
     }
+
+    IBus _bus;
+    readonly IStatusStoreClient _statusStoreClient;
 }
