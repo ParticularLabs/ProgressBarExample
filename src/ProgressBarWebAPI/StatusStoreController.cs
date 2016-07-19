@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Web.Http;
 
@@ -6,19 +7,14 @@ namespace ProgressBarWebAPI
 {
     public class StatusStoreController : ApiController
     {
-        readonly Dictionary<Guid, List<Guid>> _completedItems = new Dictionary<Guid, List<Guid>>();
+        static readonly ConcurrentDictionary<Guid, ConcurrentBag<Guid>> _completedItems = new ConcurrentDictionary<Guid, ConcurrentBag<Guid>>();
 
         [HttpPost]
         [Route("CompleteMessage")]
         public void CompleteMessage(CompletedMessage message)
         {
-            if (!_completedItems.ContainsKey(message.BatchId))
-            {
-                _completedItems.Add(message.BatchId, new List<Guid>());
-            }
-
-            _completedItems[message.BatchId].Add(message.MessageId);
-
+            var completed = _completedItems.GetOrAdd(message.BatchId, id => new ConcurrentBag<Guid>());
+            completed.Add(message.MessageId);
             Console.WriteLine($"Message {message.MessageId} marked as completed.");
         }
 
@@ -30,15 +26,16 @@ namespace ProgressBarWebAPI
 
             var batchId = Guid.Parse(id);
 
-            if (!_completedItems.ContainsKey(batchId))
+            ConcurrentBag<Guid> list;
+            if (!_completedItems.TryGetValue(batchId, out list))
             {
                 return null;
             }
 
-            return new BatchStatus()
+            return new BatchStatus
             {
                 Id = batchId,
-                ItemsCompleted = _completedItems[batchId]
+                ItemsCompleted = list.ToArray()
             };
         }
     }

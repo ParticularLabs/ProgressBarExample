@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using System.Web.Mvc;
 using NServiceBus;
 using ProgressBarMVC.Models;
@@ -9,7 +10,7 @@ public class HomeController : Controller
     /// Start a large task
     /// </summary>
     [HttpPost]
-    public JsonResult StartBigStuff(int howMuchStuff)
+    public async Task<JsonResult> StartBigStuff(int howMuchStuff)
     {
         var model = new StartBatchModel()
         {
@@ -17,7 +18,7 @@ public class HomeController : Controller
             NumberOfThingsToDo = howMuchStuff
         };
 
-        _bus.Send(new TriggerBigStuff()
+        await _session.Send(new TriggerBigStuff()
         {
             Id = model.BatchId,
             HowMuchStuff = model.NumberOfThingsToDo,
@@ -31,15 +32,14 @@ public class HomeController : Controller
     /// Query for the status of a task
     /// </summary>
     [HttpGet]
-    public JsonResult Status(string id)
+    public async Task<JsonResult> Status(string id)
     {
-        var batchStatus = _statusStoreClient.GetBatchStatus(id);
+        var batchStatus = await _statusStoreClient.GetBatchStatus(id);
 
         var completedCommandCount =
-            batchStatus == null ? 0
-                : batchStatus.ItemsCompleted.Count;
+            batchStatus?.ItemsCompleted.Count ?? 0;
 
-        var model = new BatchStatusModel()
+        var model = new BatchStatusModel
         {
             BatchId = id,
             ItemsCompletedCount = completedCommandCount
@@ -54,12 +54,12 @@ public class HomeController : Controller
         return View();
     }
 
-    public HomeController(IBus bus, IStatusStoreClient statusStoreClient)
+    public HomeController(IMessageSession session, IStatusStoreClient statusStoreClient)
     {
-        _bus = bus;
+        _session = session;
         _statusStoreClient = statusStoreClient;
     }
 
-    private readonly IBus _bus;
+    private readonly IMessageSession _session;
     private readonly IStatusStoreClient _statusStoreClient;
 }

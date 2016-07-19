@@ -1,27 +1,28 @@
 ﻿using System;
+using System.Threading.Tasks;
 using NServiceBus;
 
 class Program
 {
     static void Main()
     {
-        BusConfiguration busConfiguration = new BusConfiguration();
-        busConfiguration.EndpointName("Samples.ProgressBar.Endpoint");
-        busConfiguration.UseSerialization<JsonSerializer>();
-        busConfiguration.UsePersistence<InMemoryPersistence>();
-        busConfiguration.EnableInstallers();
-        busConfiguration.RegisterComponents(c => c.ConfigureComponent<StatusStoreClient>(DependencyLifecycle.InstancePerCall));
+        HostEndpoint().GetAwaiter().GetResult();
+    }
 
-        var excludesBuilder =
-            AllAssemblies
-                .Except("System.*");
+    static async Task HostEndpoint()
+    {
+        var endpointConfiguration = new EndpointConfiguration("Samples.ProgressBar.Endpoint");
+        endpointConfiguration.UseSerialization<JsonSerializer>();
+        endpointConfiguration.UsePersistence<InMemoryPersistence>();
+        endpointConfiguration.EnableInstallers();
+        endpointConfiguration.LimitMessageProcessingConcurrencyTo(1);
+        endpointConfiguration.RegisterComponents(c => c.ConfigureComponent<StatusStoreClient>(DependencyLifecycle.InstancePerCall));
 
-        busConfiguration.AssembliesToScan(excludesBuilder);
+        var endpoint = await Endpoint.Start(endpointConfiguration);
 
-        using (IBus bus = Bus.Create(busConfiguration).Start())
-        {
-            Console.WriteLine("Press any key to exit");
-            Console.ReadKey();
-        }
+        Console.WriteLine("Press any key to exit");
+        Console.ReadKey();
+
+        await endpoint.Stop();
     }
 }

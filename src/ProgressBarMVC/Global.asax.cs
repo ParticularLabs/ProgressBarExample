@@ -1,15 +1,13 @@
-﻿using System.Linq;
-using System.Web;
+﻿using System.Web;
 using System.Web.Mvc;
 using System.Web.Routing;
 using Autofac;
 using Autofac.Integration.Mvc;
 using NServiceBus;
-using SetStartupProjects;
 
 public class MvcApplication : HttpApplication
 {
-    IBus _bus;
+    IEndpointInstance _endpoint;
 
     public static void RegisterRoutes(RouteCollection routes)
     {
@@ -29,10 +27,7 @@ public class MvcApplication : HttpApplication
 
     public override void Dispose()
     {
-        if (_bus != null)
-        {
-            _bus.Dispose();
-        }
+        _endpoint?.Stop().GetAwaiter().GetResult();
         base.Dispose();
     }
 
@@ -43,22 +38,20 @@ public class MvcApplication : HttpApplication
         // Register your MVC controllers.
         builder.RegisterControllers(typeof(MvcApplication).Assembly);
 
-        // Set the dependency resolver to be Autofac.
-        IContainer container = builder.Build();
-
-        DependencyResolver.SetResolver(new AutofacDependencyResolver(container));
-
-        BusConfiguration busConfiguration = new BusConfiguration();
-        busConfiguration.EndpointName("Samples.Mvc.WebApplication");
+        var busConfiguration = new EndpointConfiguration("Samples.Mvc.WebApplication");
         busConfiguration.UseSerialization<JsonSerializer>();
-        busConfiguration.UseContainer<AutofacBuilder>(c => c.ExistingLifetimeScope(container));
+        busConfiguration.UseContainer<AutofacBuilder>();
         busConfiguration.UsePersistence<InMemoryPersistence>();
         busConfiguration.EnableInstallers();
 
-        busConfiguration.RegisterComponents(c => c.ConfigureComponent<StatusStoreClient>(DependencyLifecycle.InstancePerCall));
+        _endpoint = Endpoint.Start(busConfiguration).GetAwaiter().GetResult();
 
-        IStartableBus startableBus = Bus.Create(busConfiguration);
-        _bus = startableBus.Start();
+        builder.Register(c => _endpoint).As<IMessageSession>();
+        builder.Register(c => new StatusStoreClient()).As<IStatusStoreClient>();
+
+        var container = builder.Build();
+
+        DependencyResolver.SetResolver(new AutofacDependencyResolver(container));
 
         AreaRegistration.RegisterAllAreas();
         RegisterRoutes(RouteTable.Routes);

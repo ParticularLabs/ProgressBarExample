@@ -1,7 +1,8 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 public interface IStatusStoreClient
 {
-    void AddCompletedCommandToBatch(Guid batchId, Guid messageId);
-    BatchStatus GetBatchStatus(string batchId);
+    Task AddCompletedCommandToBatch(Guid batchId, Guid messageId);
+    Task<BatchStatus> GetBatchStatus(string batchId);
 }

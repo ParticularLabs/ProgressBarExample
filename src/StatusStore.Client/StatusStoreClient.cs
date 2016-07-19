@@ -1,26 +1,26 @@
 using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Threading.Tasks;
 
 public class StatusStoreClient : IStatusStoreClient
 {
-    public void AddCompletedCommandToBatch(Guid batchId, Guid messageId)
+    public async Task AddCompletedCommandToBatch(Guid batchId, Guid messageId)
     {
         using (var client = GetClient())
         {
             var completedMessage = new CompletedMessage {BatchId = batchId, MessageId = messageId};
-            client.PostAsJsonAsync("CompleteMessage", completedMessage).RunSynchronously();
+            await client.PostAsJsonAsync("CompleteMessage", completedMessage);
         }
     }
 
-    public BatchStatus GetBatchStatus(string batchId)
+    public async Task<BatchStatus> GetBatchStatus(string batchId)
     {
         using (var client = GetClient())
         {
-            var resp = client.GetAsync($"Batch?id={batchId}").Result;
+            var resp = await client.GetAsync($"Batch?id={batchId}");
             resp.EnsureSuccessStatusCode();
-            var batchStatus = resp.Content.ReadAsAsync<BatchStatus>().Result;
-            return batchStatus;
+            return await resp.Content.ReadAsAsync<BatchStatus>();
         }
     }
 
